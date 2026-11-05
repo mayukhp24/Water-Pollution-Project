@@ -53,6 +53,8 @@ const gu: Messages = {
     analyze: "પાણીની ગુણવત્તા તપાસો",
     analyzing: "તપાસ ચાલુ છે...",
     reset: "રીસેટ",
+    random: "રેન્ડમ મૂલ્યો",
+    randomHint: "બધા પરિમાણો રેન્ડમ પરીક્ષણ મૂલ્યોથી ભરો",
     infoAbout: "{label} વિશે માહિતી",
     safeRange: "સલામત શ્રેણી: {min} - {max} {unit}",
     issueWarning: "{label} યોગ્ય શ્રેણીથી થોડું બહાર છે",

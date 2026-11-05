@@ -53,6 +53,8 @@ const hi: Messages = {
     analyze: "जल गुणवत्ता जाँचें",
     analyzing: "जाँच हो रही है...",
     reset: "रीसेट",
+    random: "रैंडम मान",
+    randomHint: "सभी पैरामीटर को रैंडम परीक्षण मानों से भरें",
     infoAbout: "{label} के बारे में जानकारी",
     safeRange: "सुरक्षित सीमा: {min} - {max} {unit}",
     issueWarning: "{label} उपयुक्त सीमा से थोड़ा बाहर है",

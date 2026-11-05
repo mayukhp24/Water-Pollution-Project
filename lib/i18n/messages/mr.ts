@@ -53,6 +53,8 @@ const mr: Messages = {
     analyze: "पाण्याची गुणवत्ता तपासा",
     analyzing: "तपासणी सुरू आहे...",
     reset: "रीसेट",
+    random: "यादृच्छिक मूल्ये",
+    randomHint: "सर्व घटक यादृच्छिक चाचणी मूल्यांनी भरा",
     infoAbout: "{label} बद्दल माहिती",
     safeRange: "सुरक्षित मर्यादा: {min} - {max} {unit}",
     issueWarning: "{label} योग्य मर्यादेच्या थोडे बाहेर आहे",

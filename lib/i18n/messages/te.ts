@@ -53,6 +53,8 @@ const te: Messages = {
     analyze: "నీటి నాణ్యతను విశ్లేషించు",
     analyzing: "విశ్లేషిస్తోంది...",
     reset: "రీసెట్",
+    random: "యాదృచ్ఛిక విలువలు",
+    randomHint: "అన్ని పారామితులను యాదృచ్ఛిక పరీక్ష విలువలతో నింపండి",
     infoAbout: "{label} గురించి సమాచారం",
     safeRange: "సురక్షిత పరిధి: {min} - {max} {unit}",
     issueWarning: "{label} సరైన పరిధికి కొద్దిగా బయట ఉంది",

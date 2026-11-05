@@ -12,7 +12,7 @@ import { ReuseRecommendations } from "./reuse-recommendations"
 import type { AnalyzedReading } from "@/lib/reuse/types"
 import { useI18n } from "@/lib/i18n/provider"
 import type { Messages } from "@/lib/i18n/messages/en"
-import { Beaker, RotateCcw, FlaskConical, Atom, Bug, Droplets } from "lucide-react"
+import { Beaker, RotateCcw, FlaskConical, Atom, Bug, Droplets, Dices } from "lucide-react"
 
 // Parameter Categories
 const PHYSICAL_PARAMETERS = [
@@ -392,6 +392,28 @@ const ALL_PARAMETERS = [...PHYSICAL_PARAMETERS, ...CHEMICAL_PARAMETERS, ...BIOLO
 
 type ParameterValues = Record<string, string>
 
+// Random sample for quick demos: mostly safe readings with some borderline and unsafe ones,
+// so each click produces a varied but realistic result.
+function randomValueFor(param: (typeof ALL_PARAMETERS)[number]): string {
+  const between = (lo: number, hi: number) => lo + Math.random() * Math.max(hi - lo, 0)
+  const roll = Math.random()
+  let value: number
+  if (roll < 0.6) {
+    value = between(param.safeMin, param.safeMax)
+  } else if (roll < 0.85 && (param.warningMax > param.safeMax || param.warningMin < param.safeMin)) {
+    // Borderline: just outside the safe range, on whichever side has a warning band.
+    value =
+      param.warningMax > param.safeMax
+        ? between(param.safeMax, param.warningMax)
+        : between(param.warningMin, param.safeMin)
+  } else {
+    value = param.warningMax < param.max ? between(param.warningMax, param.max) : between(param.min, param.warningMin)
+  }
+  const span = param.max - param.min
+  const decimals = span <= 2 ? 2 : span <= 20 ? 1 : 0
+  return String(Number(value.toFixed(decimals)))
+}
+
 interface DetectedIssue {
   kind: "warning" | "danger"
   id: string
@@ -439,6 +461,15 @@ export function WaterQualityAnalyzer() {
 
   const handleReset = () => {
     setValues(ALL_PARAMETERS.reduce((acc, param) => ({ ...acc, [param.id]: "" }), {}))
+    setResult(null)
+    setConfidence(0)
+    setIssues([])
+    setAnalyzedReadings(null)
+  }
+
+  const handleRandomize = () => {
+    setValues(ALL_PARAMETERS.reduce((acc, param) => ({ ...acc, [param.id]: randomValueFor(param) }), {}))
+    // Clear the previous verdict so it isn't shown against the new inputs.
     setResult(null)
     setConfidence(0)
     setIssues([])
@@ -633,6 +664,17 @@ export function WaterQualityAnalyzer() {
                     {m.analyzer.analyze}
                   </>
                 )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleRandomize}
+                disabled={isAnalyzing}
+                title={m.analyzer.randomHint}
+                className="border-border text-foreground hover:bg-secondary"
+              >
+                <Dices className="w-4 h-4" />
+                <span className="hidden sm:inline">{m.analyzer.random}</span>
+                <span className="sr-only sm:hidden">{m.analyzer.random}</span>
               </Button>
               <Button
                 variant="outline"

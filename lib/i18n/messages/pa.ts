@@ -53,6 +53,8 @@ const pa: Messages = {
     analyze: "ਪਾਣੀ ਦੀ ਗੁਣਵੱਤਾ ਜਾਂਚੋ",
     analyzing: "ਜਾਂਚ ਹੋ ਰਹੀ ਹੈ...",
     reset: "ਰੀਸੈੱਟ",
+    random: "ਬੇਤਰਤੀਬ ਮੁੱਲ",
+    randomHint: "ਸਾਰੇ ਮਾਪਦੰਡ ਬੇਤਰਤੀਬ ਟੈਸਟ ਮੁੱਲਾਂ ਨਾਲ ਭਰੋ",
     infoAbout: "{label} ਬਾਰੇ ਜਾਣਕਾਰੀ",
     safeRange: "ਸੁਰੱਖਿਅਤ ਸੀਮਾ: {min} - {max} {unit}",
     issueWarning: "{label} ਢੁਕਵੀਂ ਸੀਮਾ ਤੋਂ ਥੋੜ੍ਹਾ ਬਾਹਰ ਹੈ",

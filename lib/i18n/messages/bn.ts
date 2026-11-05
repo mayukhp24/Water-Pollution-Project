@@ -53,6 +53,8 @@ const bn: Messages = {
     analyze: "জলের গুণমান বিশ্লেষণ করুন",
     analyzing: "বিশ্লেষণ চলছে...",
     reset: "রিসেট",
+    random: "এলোমেলো মান",
+    randomHint: "সব প্যারামিটার এলোমেলো পরীক্ষার মান দিয়ে পূরণ করুন",
     infoAbout: "{label} সম্পর্কে তথ্য",
     safeRange: "নিরাপদ সীমা: {min} - {max} {unit}",
     issueWarning: "{label} আদর্শ সীমার সামান্য বাইরে",

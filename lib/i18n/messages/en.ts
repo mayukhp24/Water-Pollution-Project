@@ -56,6 +56,8 @@ const en = {
     analyze: "Analyze Water Quality",
     analyzing: "Analyzing...",
     reset: "Reset",
+    random: "Random values",
+    randomHint: "Fill every parameter with random test values",
     infoAbout: "Info about {label}",
     safeRange: "Safe range: {min} - {max} {unit}",
     issueWarning: "{label} is slightly outside optimal range",
