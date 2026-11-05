@@ -1,0 +1,9 @@
+# Netlify auto-detects Next.js and applies its Next.js runtime (API routes become functions).
+# Vercel needs no config file. On either host, set GROQ_API_KEY (and optionally GROQ_MODEL)
+# as an environment variable in the dashboard for the chat assistant.
+[build]
+  command = "pnpm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
