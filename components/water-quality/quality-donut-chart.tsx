@@ -3,6 +3,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { useI18n } from "@/lib/i18n/provider"
 
 interface QualityData {
   safeCount: number
@@ -25,11 +26,13 @@ const COLORS = {
 }
 
 export function QualityDonutChart({ data, result }: QualityDonutChartProps) {
+  const { m, fmt } = useI18n()
+  const s = m.score
   const chartData = [
-    { name: "Safe", value: data.safeCount, color: COLORS.safe },
-    { name: "Warning", value: data.warningCount, color: COLORS.warning },
-    { name: "Danger", value: data.dangerCount, color: COLORS.danger },
-    { name: "Not Tested", value: data.neutralCount, color: COLORS.neutral },
+    { name: s.safe, value: data.safeCount, color: COLORS.safe },
+    { name: s.warning, value: data.warningCount, color: COLORS.warning },
+    { name: s.danger, value: data.dangerCount, color: COLORS.danger },
+    { name: s.notTested, value: data.neutralCount, color: COLORS.neutral },
   ].filter(item => item.value > 0)
 
   const percentage = data.totalParameters > 0 
@@ -37,10 +40,10 @@ export function QualityDonutChart({ data, result }: QualityDonutChartProps) {
     : 0
 
   const getResultLabel = () => {
-    if (result === null) return { text: "Pending", color: "text-muted-foreground" }
-    if (result === "safe") return { text: "Safe", color: "text-success" }
-    if (result === "warning") return { text: "Caution", color: "text-warning" }
-    return { text: "Unsafe", color: "text-destructive" }
+    if (result === null) return { text: s.pending, color: "text-muted-foreground" }
+    if (result === "safe") return { text: s.safe, color: "text-success" }
+    if (result === "warning") return { text: s.caution, color: "text-warning" }
+    return { text: s.unsafe, color: "text-destructive" }
   }
 
   const resultLabel = getResultLabel()
@@ -52,7 +55,7 @@ export function QualityDonutChart({ data, result }: QualityDonutChartProps) {
         <div className="bg-card border border-border rounded-lg shadow-lg p-3">
           <p className="text-sm font-medium text-foreground">{payload[0].name}</p>
           <p className="text-sm text-muted-foreground">
-            {payload[0].value} parameter{payload[0].value !== 1 ? 's' : ''}
+            {fmt(s.parameterCount, { count: payload[0].value })}
           </p>
         </div>
       )
@@ -63,8 +66,8 @@ export function QualityDonutChart({ data, result }: QualityDonutChartProps) {
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">Water Quality Score</CardTitle>
-        <CardDescription>Overall parameter distribution</CardDescription>
+        <CardTitle className="text-base font-semibold">{s.title}</CardTitle>
+        <CardDescription>{s.description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="relative h-[280px]">
@@ -110,19 +113,19 @@ export function QualityDonutChart({ data, result }: QualityDonutChartProps) {
         <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-border">
           <div className="text-center">
             <div className="text-lg font-semibold text-success">{data.safeCount}</div>
-            <div className="text-xs text-muted-foreground">Safe</div>
+            <div className="text-xs text-muted-foreground">{s.safe}</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-semibold text-warning">{data.warningCount}</div>
-            <div className="text-xs text-muted-foreground">Warning</div>
+            <div className="text-xs text-muted-foreground">{s.warning}</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-semibold text-destructive">{data.dangerCount}</div>
-            <div className="text-xs text-muted-foreground">Danger</div>
+            <div className="text-xs text-muted-foreground">{s.danger}</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-semibold text-muted-foreground">{data.neutralCount}</div>
-            <div className="text-xs text-muted-foreground">Pending</div>
+            <div className="text-xs text-muted-foreground">{s.pending}</div>
           </div>
         </div>
       </CardContent>

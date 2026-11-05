@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import Groq from "groq-sdk"
+import { isLanguageCode, languageName } from "@/lib/i18n/languages"
 
 export async function POST(req: Request) {
   try {
@@ -16,6 +17,7 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     const { messages, message } = body
+    const language = isLanguageCode(body.language) ? languageName(body.language) : "English"
 
     // Support both an array of messages or a single message string
     const formattedMessages: Array<{ role: "user" | "assistant" | "system"; content: string }> = []
@@ -39,7 +41,10 @@ export async function POST(req: Request) {
         {
           role: "system",
           content:
-            "You are AquaCheck Assistant, a helpful and friendly AI assistant that answers questions about water quality, water safety standards, and general questions clearly and concisely.",
+            "You are AquaCheck Assistant, a helpful and friendly AI assistant that answers questions about water quality, water safety standards, and general questions clearly and concisely." +
+            (language === "English"
+              ? ""
+              : ` The user's interface language is ${language}: reply in ${language} using its native script, unless the user writes in a different language, in which case reply in theirs.`),
         },
         ...formattedMessages,
       ],

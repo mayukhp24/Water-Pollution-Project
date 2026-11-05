@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { Info } from "lucide-react"
+import { useI18n } from "@/lib/i18n/provider"
 import {
   Tooltip,
   TooltipContent,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/tooltip"
 
 interface ParameterInputProps {
+  id: string
   label: string
   value: string
   onChange: (value: string) => void
@@ -25,6 +27,7 @@ interface ParameterInputProps {
 }
 
 export function ParameterInput({
+  id,
   label,
   value,
   onChange,
@@ -36,6 +39,7 @@ export function ParameterInput({
   description,
   currentStatus = "neutral",
 }: ParameterInputProps) {
+  const { m, fmt } = useI18n()
   const statusColors = {
     safe: "border-success/50 focus-within:border-success",
     warning: "border-warning/50 focus-within:border-warning",
@@ -46,7 +50,7 @@ export function ParameterInput({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label htmlFor={label} className="text-sm font-medium text-foreground">
+        <Label htmlFor={id} className="text-sm font-medium text-foreground">
           {label}
         </Label>
         <TooltipProvider>
@@ -54,13 +58,13 @@ export function ParameterInput({
             <TooltipTrigger asChild>
               <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
                 <Info className="h-4 w-4" />
-                <span className="sr-only">Info about {label}</span>
+                <span className="sr-only">{fmt(m.analyzer.infoAbout, { label })}</span>
               </button>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs">
               <p className="text-sm">{description}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Safe range: {safeMin} - {safeMax} {unit}
+                {fmt(m.analyzer.safeRange, { min: safeMin, max: safeMax, unit })}
               </p>
             </TooltipContent>
           </Tooltip>
@@ -73,7 +77,7 @@ export function ParameterInput({
         )}
       >
         <Input
-          id={label}
+          id={id}
           type="number"
           value={value}
           onChange={(e) => onChange(e.target.value)}

@@ -13,7 +13,17 @@ export interface SwipePage {
 // Full-height horizontal pager. Pages sit side by side in a CSS scroll-snap container, so touch
 // swipes and trackpad gestures follow the finger natively and snap to the nearest page; tab clicks
 // glide there with smooth scrolling. The underline tracks scroll position frame by frame.
-export function SwipeTabs({ pages, header }: { pages: SwipePage[]; header: React.ReactNode }) {
+export function SwipeTabs({
+  pages,
+  header,
+  actions,
+  tablistLabel,
+}: {
+  pages: SwipePage[]
+  header: React.ReactNode
+  actions?: React.ReactNode
+  tablistLabel: string
+}) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const indicatorRef = useRef<HTMLSpanElement>(null)
   const [active, setActive] = useState(0)
@@ -90,12 +100,14 @@ export function SwipeTabs({ pages, header }: { pages: SwipePage[]; header: React
     // clip inside their page instead of stretching the document and making the whole window scroll.
     <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
       <header className="shrink-0 border-b border-border bg-card/50 backdrop-blur-sm z-50">
-        <div className="container mx-auto px-4 pt-3 md:flex md:items-center md:justify-between md:gap-6 md:py-0">
-          {header}
+        {/* Phone: logo + controls on one row, tabs full width below. Desktop: logo | tabs | controls. */}
+        <div className="container mx-auto flex flex-wrap items-center gap-x-6 px-4 pt-3 md:flex-nowrap md:pt-0">
+          <div className="order-1">{header}</div>
+          <div className="order-2 ml-auto md:order-3 md:ml-0">{actions}</div>
           <nav
             role="tablist"
-            aria-label="Sections"
-            className="relative mt-2 grid md:mt-0 md:w-[420px]"
+            aria-label={tablistLabel}
+            className="relative order-3 mt-2 grid w-full md:order-2 md:mt-0 md:ml-auto md:w-[420px]"
             style={{ gridTemplateColumns: `repeat(${pages.length}, minmax(0, 1fr))` }}
           >
             {pages.map((page, i) => (

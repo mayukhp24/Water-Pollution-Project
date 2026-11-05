@@ -18,22 +18,20 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { buildRuleBasedFeed } from "@/lib/reuse/rules"
 import type { AnalyzedReading, ReuseFeed, ReuseRecommendation, Verdict } from "@/lib/reuse/types"
+import { useI18n } from "@/lib/i18n/provider"
 
-const VERDICT_STYLE: Record<Verdict, { label: string; icon: React.ElementType; badge: string; icon_: string }> = {
+const VERDICT_STYLE: Record<Verdict, { icon: React.ElementType; badge: string; icon_: string }> = {
   suitable: {
-    label: "Ready to use",
     icon: CheckCircle2,
     badge: "bg-success/15 text-success border-success/30",
     icon_: "text-success",
   },
   with_treatment: {
-    label: "After treatment",
     icon: Wrench,
     badge: "bg-warning/15 text-warning border-warning/30",
     icon_: "text-warning",
   },
   not_suitable: {
-    label: "Not suitable",
     icon: XCircle,
     badge: "bg-destructive/15 text-destructive border-destructive/30",
     icon_: "text-destructive",
@@ -51,18 +49,21 @@ interface ReuseRecommendationsProps {
 }
 
 export function ReuseRecommendations({ readings, drinkingResult }: ReuseRecommendationsProps) {
+  const { m, lang } = useI18n()
+  const t = m.reuse
   const rulesFeed = useMemo(() => buildRuleBasedFeed(readings, drinkingResult), [readings, drinkingResult])
   const [ai, setAi] = useState<AiState>({ status: "loading" })
   const [view, setView] = useState<"ai" | "rules">("ai")
   const [attempt, setAttempt] = useState(0)
 
+  // Re-asks the AI when the language changes so the feed follows the UI language.
   useEffect(() => {
     const controller = new AbortController()
     setAi({ status: "loading" })
     fetch("/api/recommendations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ readings, drinkingResult }),
+      body: JSON.stringify({ readings, drinkingResult, language: lang }),
       signal: controller.signal,
     })
       .then(async (res) => {
@@ -75,7 +76,7 @@ export function ReuseRecommendations({ readings, drinkingResult }: ReuseRecommen
         setAi({ status: "error", message: error instanceof Error ? error.message : "AI recommendations failed." })
       })
     return () => controller.abort()
-  }, [readings, drinkingResult, attempt])
+  }, [readings, drinkingResult, attempt, lang])
 
   const feed = view === "ai" && ai.status === "ready" ? ai.feed : rulesFeed
   const all = [...feed.domestic, ...feed.industry]
@@ -94,12 +95,12 @@ export function ReuseRecommendations({ readings, drinkingResult }: ReuseRecommen
               <Sparkles className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-lg">Where can this water still be used?</CardTitle>
-              <CardDescription>Reuse recommendations for home and industry, based on your sample</CardDescription>
+              <CardTitle className="text-lg">{t.title}</CardTitle>
+              <CardDescription>{t.description}</CardDescription>
             </div>
           </div>
 
-          <div className="flex rounded-md bg-secondary/60 p-0.5" role="tablist" aria-label="Recommendation source">
+          <div className="flex rounded-md bg-secondary/60 p-0.5" role="tablist" aria-label={t.sourceAria}>
             <button
               type="button"
               role="tab"
@@ -115,7 +116,7 @@ export function ReuseRecommendations({ readings, drinkingResult }: ReuseRecommen
               ) : (
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
               )}
-              AI insights
+              {t.ai}
             </button>
             <button
               type="button"
@@ -128,7 +129,7 @@ export function ReuseRecommendations({ readings, drinkingResult }: ReuseRecommen
               )}
             >
               <ListChecks className="w-3.5 h-3.5" />
-              Standards-based
+              {t.rules}
             </button>
           </div>
         </div>
@@ -136,17 +137,22 @@ export function ReuseRecommendations({ readings, drinkingResult }: ReuseRecommen
         {view === "ai" && ai.status === "loading" && (
           <p className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-2.5 text-xs text-muted-foreground">
             <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-            AI is reviewing your sample… showing standards-based recommendations meanwhile.
+            {t.aiLoading}
           </p>
         )}
         {view === "ai" && ai.status === "error" && (
           <div className="flex items-center justify-between gap-2 rounded-md border border-warning/30 bg-warning/10 p-2.5">
-            <p className="text-xs text-warning">{ai.message} Showing standards-based recommendations instead.</p>
+            <p className="text-xs text-warning">
+              {ai.message} {t.aiErrorSuffix}
+            </p>
             <Button size="sm" variant="ghost" className="h-7 shrink-0" onClick={() => setAttempt((n) => n + 1)}>
               <RotateCcw className="w-3.5 h-3.5" />
-              Retry
+              {m.common.retry}
             </Button>
           </div>
+        )}
+        {feed.source === "rules" && lang !== "en" && (
+          <p className="text-[11px] text-muted-foreground">{t.rulesEnglishNote}</p>
         )}
 
         <div className="rounded-lg border border-border bg-secondary/30 p-4">
@@ -157,14 +163,14 @@ export function ReuseRecommendations({ readings, drinkingResult }: ReuseRecommen
               <ListChecks className="w-3.5 h-3.5 text-primary" />
             )}
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {feed.source === "ai" ? "AI summary" : "Standards-based summary"}
+              {feed.source === "ai" ? t.aiSummary : t.rulesSummary}
             </span>
           </div>
           <p className="text-sm text-foreground leading-relaxed">{feed.summary}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {(Object.keys(counts) as Verdict[]).map((v) => (
               <span key={v} className={cn("rounded-full border px-2.5 py-0.5 text-[11px]", VERDICT_STYLE[v].badge)}>
-                {counts[v]} {VERDICT_STYLE[v].label.toLowerCase()}
+                {counts[v]} · {t[v]}
               </span>
             ))}
           </div>
@@ -173,15 +179,15 @@ export function ReuseRecommendations({ readings, drinkingResult }: ReuseRecommen
 
       <CardContent className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
-          <SectorColumn title="Domestic" icon={Home} items={feed.domestic} />
-          <SectorColumn title="Industry" icon={Factory} items={feed.industry} />
+          <SectorColumn title={t.domestic} icon={Home} items={feed.domestic} />
+          <SectorColumn title={t.industry} icon={Factory} items={feed.industry} />
         </div>
 
         {feed.tips.length > 0 && (
           <div className="rounded-lg border border-border p-4">
             <p className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
               <Lightbulb className="w-4 h-4 text-warning" />
-              Tips
+              {t.tips}
             </p>
             <ul className="space-y-1.5">
               {feed.tips.map((tip, i) => (
@@ -195,9 +201,7 @@ export function ReuseRecommendations({ readings, drinkingResult }: ReuseRecommen
         )}
 
         <p className="text-[11px] text-muted-foreground">
-          {feed.source === "ai"
-            ? "AI-generated guidance; check critical uses (food, boilers, health) with a certified lab."
-            : "Indicative limits based on BIS 10500, IS 456, FAO irrigation and common cooling/boiler practice."}
+          {feed.source === "ai" ? t.aiDisclaimer : t.rulesDisclaimer}
         </p>
       </CardContent>
     </Card>
@@ -213,6 +217,7 @@ function SectorColumn({
   icon: React.ElementType
   items: ReuseRecommendation[]
 }) {
+  const { m } = useI18n()
   return (
     <div>
       <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
@@ -231,7 +236,7 @@ function SectorColumn({
                   {capitalize(item.use)}
                 </p>
                 <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[10px]", style.badge)}>
-                  {style.label}
+                  {m.reuse[item.verdict]}
                 </span>
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{item.reason}</p>

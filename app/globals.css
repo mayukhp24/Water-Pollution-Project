@@ -3,47 +3,50 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Light theme (dark theme overrides below under .dark) */
 :root {
-  --background: oklch(0.12 0.005 260);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.16 0.005 260);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.16 0.005 260);
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.72 0.15 200);
-  --primary-foreground: oklch(0.12 0.005 260);
-  --secondary: oklch(0.22 0.01 260);
-  --secondary-foreground: oklch(0.9 0 0);
-  --muted: oklch(0.22 0.01 260);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.72 0.15 200);
-  --accent-foreground: oklch(0.12 0.005 260);
-  --destructive: oklch(0.6 0.2 25);
-  --destructive-foreground: oklch(0.95 0 0);
-  --border: oklch(0.28 0.01 260);
-  --input: oklch(0.2 0.01 260);
-  --ring: oklch(0.72 0.15 200);
-  --chart-1: oklch(0.72 0.15 200);
-  --chart-2: oklch(0.7 0.18 145);
-  --chart-3: oklch(0.75 0.15 85);
-  --chart-4: oklch(0.65 0.2 25);
-  --chart-5: oklch(0.6 0.15 300);
+  color-scheme: light;
+  --background: oklch(0.975 0.004 240);
+  --foreground: oklch(0.2 0.012 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.012 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.012 260);
+  --primary: oklch(0.55 0.12 215);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.945 0.006 250);
+  --secondary-foreground: oklch(0.25 0.012 260);
+  --muted: oklch(0.945 0.006 250);
+  --muted-foreground: oklch(0.47 0.012 260);
+  --accent: oklch(0.93 0.035 215);
+  --accent-foreground: oklch(0.3 0.07 220);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.89 0.007 250);
+  --input: oklch(0.96 0.005 250);
+  --ring: oklch(0.55 0.12 215);
+  --chart-1: oklch(0.58 0.12 215);
+  --chart-2: oklch(0.58 0.15 145);
+  --chart-3: oklch(0.68 0.15 75);
+  --chart-4: oklch(0.57 0.2 25);
+  --chart-5: oklch(0.55 0.15 300);
   --radius: 0.5rem;
-  --sidebar: oklch(0.14 0.005 260);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.72 0.15 200);
-  --sidebar-primary-foreground: oklch(0.12 0.005 260);
-  --sidebar-accent: oklch(0.22 0.01 260);
-  --sidebar-accent-foreground: oklch(0.9 0 0);
-  --sidebar-border: oklch(0.28 0.01 260);
-  --sidebar-ring: oklch(0.72 0.15 200);
-  --success: oklch(0.7 0.18 145);
-  --success-foreground: oklch(0.12 0.005 260);
-  --warning: oklch(0.75 0.15 85);
-  --warning-foreground: oklch(0.12 0.005 260);
+  --sidebar: oklch(0.985 0.003 240);
+  --sidebar-foreground: oklch(0.2 0.012 260);
+  --sidebar-primary: oklch(0.55 0.12 215);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.945 0.006 250);
+  --sidebar-accent-foreground: oklch(0.25 0.012 260);
+  --sidebar-border: oklch(0.89 0.007 250);
+  --sidebar-ring: oklch(0.55 0.12 215);
+  --success: oklch(0.52 0.14 150);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.58 0.13 65);
+  --warning-foreground: oklch(0.99 0 0);
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.12 0.005 260);
   --foreground: oklch(0.95 0 0);
   --card: oklch(0.16 0.005 260);
@@ -83,7 +86,10 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
+  /* Geist has no Indic glyphs; the browser falls back per glyph to these system fonts. */
+  --font-sans: 'Geist', 'Geist Fallback', 'Nirmala UI', 'Noto Sans', 'Noto Sans Devanagari', 'Noto Sans Tamil',
+    'Noto Sans Telugu', 'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Bengali', 'Noto Sans Gujarati',
+    'Noto Sans Gurmukhi', system-ui, sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
   --color-foreground: var(--foreground);

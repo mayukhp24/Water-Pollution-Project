@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { useI18n } from "@/lib/i18n/provider"
 import { CheckCircle2, XCircle, AlertTriangle, Minus } from "lucide-react"
 
 interface Parameter {
@@ -18,6 +19,7 @@ interface StandardsTableProps {
 }
 
 export function StandardsTable({ parameters }: StandardsTableProps) {
+  const { m } = useI18n()
   const getStatusConfig = (status: Parameter["status"]) => {
     switch (status) {
       case "safe":
@@ -25,21 +27,21 @@ export function StandardsTable({ parameters }: StandardsTableProps) {
           icon: CheckCircle2,
           iconClass: "text-success",
           rowClass: "bg-success/5",
-          label: "Safe",
+          label: m.score.safe,
         }
       case "warning":
         return {
           icon: AlertTriangle,
           iconClass: "text-warning",
           rowClass: "bg-warning/5",
-          label: "Warning",
+          label: m.score.warning,
         }
       case "danger":
         return {
           icon: XCircle,
           iconClass: "text-destructive",
           rowClass: "bg-destructive/5",
-          label: "Unsafe",
+          label: m.score.unsafe,
         }
       default:
         return {
@@ -54,7 +56,7 @@ export function StandardsTable({ parameters }: StandardsTableProps) {
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Parameter Analysis</CardTitle>
+        <CardTitle className="text-base font-semibold">{m.table.title}</CardTitle>
       </CardHeader>
       <CardContent className="px-0 pb-0">
         <div className="overflow-x-auto">
@@ -62,16 +64,16 @@ export function StandardsTable({ parameters }: StandardsTableProps) {
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">
-                  Parameter
+                  {m.table.parameter}
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">
-                  Your Value
+                  {m.table.yourValue}
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">
-                  Safe Range
+                  {m.table.safeRange}
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">
-                  Status
+                  {m.table.status}
                 </th>
               </tr>
             </thead>

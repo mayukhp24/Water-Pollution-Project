@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { MessageCircle, X, Send, Loader2, Bot, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useI18n } from "@/lib/i18n/provider"
 
 interface ChatMessage {
   role: "user" | "assistant"
@@ -11,14 +12,11 @@ interface ChatMessage {
 }
 
 export function ChatWidget() {
+  const { m, lang } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "Hello! I'm your AquaCheck Assistant. Feel free to ask me any questions about water quality, parameters, drinking standards, or general topics.",
-    },
-  ])
+  // The greeting is rendered from the current language rather than stored, so it follows language changes.
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const shown: ChatMessage[] = [{ role: "assistant", content: m.chat.greeting }, ...messages]
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -45,10 +43,11 @@ export function ChatWidget() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: updatedMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
+          messages: updatedMessages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
           })),
+          language: lang,
         }),
       })
 
@@ -59,7 +58,7 @@ export function ChatWidget() {
           ...prev,
           {
             role: "assistant",
-            content: data.error || "Sorry, I encountered an error. Please try again.",
+            content: data.error || m.chat.error,
           },
         ])
       } else {
@@ -67,7 +66,7 @@ export function ChatWidget() {
           ...prev,
           {
             role: "assistant",
-            content: data.reply || "No response received.",
+            content: data.reply || m.chat.noResponse,
           },
         ])
       }
@@ -76,7 +75,7 @@ export function ChatWidget() {
         ...prev,
         {
           role: "assistant",
-          content: "Network error: Unable to connect to the chat service. Please check your connection.",
+          content: m.chat.network,
         },
       ])
     } finally {
@@ -95,14 +94,14 @@ export function ChatWidget() {
                 <Bot className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-foreground">AquaCheck Assistant</h3>
-                <p className="text-[11px] text-muted-foreground">Powered by Groq</p>
+                <h3 className="text-sm font-semibold text-foreground">{m.chat.title}</h3>
+                <p className="text-[11px] text-muted-foreground">{m.chat.poweredBy}</p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
               className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              aria-label="Close chat"
+              aria-label={m.chat.close}
             >
               <X className="w-4 h-4" />
             </button>
@@ -110,7 +109,7 @@ export function ChatWidget() {
 
           {/* Messages List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {messages.map((msg, index) => (
+            {shown.map((msg, index) => (
               <div
                 key={index}
                 className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
@@ -144,7 +143,7 @@ export function ChatWidget() {
                 </div>
                 <div className="bg-secondary text-muted-foreground text-sm rounded-2xl rounded-tl-sm px-3.5 py-2 border border-border/50 flex items-center gap-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Thinking...</span>
+                  <span>{m.chat.thinking}</span>
                 </div>
               </div>
             )}
@@ -157,7 +156,7 @@ export function ChatWidget() {
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask a question..."
+                placeholder={m.chat.placeholder}
                 disabled={isLoading}
                 className="flex-1 h-9 text-sm bg-background border-border"
               />
@@ -168,7 +167,7 @@ export function ChatWidget() {
                 className="h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <Send className="w-4 h-4" />
-                <span className="sr-only">Send</span>
+                <span className="sr-only">{m.chat.send}</span>
               </Button>
             </div>
           </form>
@@ -180,7 +179,7 @@ export function ChatWidget() {
         onClick={() => setIsOpen(!isOpen)}
         size="icon"
         className="w-13 h-13 rounded-full shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-transform active:scale-95"
-        aria-label={isOpen ? "Close chat" : "Open chat"}
+        aria-label={isOpen ? m.chat.close : m.chat.open}
       >
         {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </Button>

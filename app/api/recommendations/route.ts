@@ -2,11 +2,13 @@ import { NextResponse } from "next/server"
 import Groq from "groq-sdk"
 import { z } from "zod"
 import type { ReuseFeed } from "@/lib/reuse/types"
+import { isLanguageCode, languageName } from "@/lib/i18n/languages"
 
 export const dynamic = "force-dynamic"
 
 const requestSchema = z.object({
   drinkingResult: z.enum(["safe", "warning", "unsafe"]),
+  language: z.string().optional(),
   readings: z
     .array(
       z.object({
@@ -87,7 +89,6 @@ Rules:
 - Give 4-6 domestic uses (e.g. bathing, laundry, dishwashing, toilet flushing, floor or footpath cleaning, vehicle washing, gardening) and 4-6 industrial uses (e.g. cooling tower or coolant make-up, boiler feed, concrete mixing, dust suppression, irrigation, textile processing, aquaculture, fire-fighting reserve).
 - Order each list from most to least suitable, and make the uses specific to the problems in THIS sample.
 - Judge each use only by the parameters that actually matter for it. Example: hardness and odour do not matter for footpath cleaning, toilet flushing or dust suppression, so those are "suitable"; hard water is acceptable as coolant make-up with antiscalant. Always include at least two "suitable" uses per list when any exist.
-- Write "use" in Title Case (e.g. "Footpath Cleaning").
 - Base every verdict only on the measurements given. Refer to actual values and units in the reason. Do not invent measurements.
 - If coliform, E. coli or other pathogens are above zero, never mark body-contact or food uses "suitable"; require disinfection.
 - If bacteria were not measured, say disinfection is advisable for body-contact uses.
@@ -112,6 +113,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid readings." }, { status: 400 })
   }
   const { readings, drinkingResult } = parsed.data
+  const language = isLanguageCode(parsed.data.language) ? languageName(parsed.data.language) : "English"
+  const languageRule =
+    language === "English"
+      ? `\n- Write "use" in Title Case (e.g. "Footpath Cleaning").`
+      : `\n\nLANGUAGE: Write every text value in ${language} using its native script — "summary", "reason", "treatment", "tips" AND every "use" name (e.g. translate "Footpath Cleaning" and "Cooling Tower Make-up" into ${language}; do not leave use names in English). Keep JSON keys and "verdict" values exactly as specified in English. Keep units, numbers and abbreviations like pH, TDS, BOD, E. coli, IS 456 as they are.`
 
   const sample = readings
     .map((r) => {
@@ -123,7 +129,7 @@ export async function POST(req: Request) {
   const groq = new Groq({ apiKey })
   const model = process.env.GROQ_MODEL || "openai/gpt-oss-20b"
   const messages = [
-    { role: "system" as const, content: SYSTEM_PROMPT },
+    { role: "system" as const, content: SYSTEM_PROMPT + languageRule },
     {
       role: "user" as const,
       content: `Drinking-water verdict from our analyzer: ${drinkingResult}.\nMeasured parameters:\n${sample}`,

@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button"
 import {
   ATTRIBUTES_BY_ID,
   OBSERVATION_ATTRIBUTES,
-  SOURCE_TYPES,
   type ObservationsResponse,
+  type SourceTypeId,
 } from "@/lib/observations/attributes"
+import { useI18n } from "@/lib/i18n/provider"
+import type { Messages } from "@/lib/i18n/messages/en"
 import { AddReadingDialog } from "./add-reading-dialog"
 import { formatValue } from "./format"
 
-const SOURCE_LABEL = Object.fromEntries(SOURCE_TYPES.map((s) => [s.id, s.label]))
 const COLLAPSED_COUNT = 3
 
 type State =
@@ -21,6 +22,10 @@ type State =
   | { status: "ready"; data: ObservationsResponse }
 
 export function CommunityReadings({ regionId, regionName }: { regionId: string; regionName: string }) {
+  const { m, fmt, lang } = useI18n()
+  const t = m.readings
+  const attrLabel = (id: string) => m.attributes[id as keyof Messages["attributes"]] ?? ATTRIBUTES_BY_ID.get(id)?.label ?? id
+  const sourceLabel = (id: string) => m.sources[id as SourceTypeId] ?? id
   const [state, setState] = useState<State>({ status: "loading" })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [showAll, setShowAll] = useState(false)
@@ -64,28 +69,28 @@ export function CommunityReadings({ regionId, regionName }: { regionId: string; 
     <div className="space-y-3 border-t border-border pt-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-medium text-foreground">Community readings</p>
+          <p className="text-sm font-medium text-foreground">{t.title}</p>
           <p className="text-[11px] text-muted-foreground">
-            {data ? `${data.summary.count} submitted for ${regionName}` : "Measurements added by visitors"}
+            {data ? fmt(t.count, { count: data.summary.count, name: regionName }) : t.subtitle}
           </p>
         </div>
         <Button size="sm" onClick={() => setDialogOpen(true)} disabled={!data || data.storage === null}>
           <Plus className="w-4 h-4" />
-          Add reading
+          {t.add}
         </Button>
       </div>
 
       {justSaved && (
         <p className="flex items-center gap-1.5 rounded-md bg-success/10 border border-success/30 p-2 text-xs text-success">
           <CheckCircle2 className="w-3.5 h-3.5" />
-          Reading saved. Thank you!
+          {t.saved}
         </p>
       )}
 
       {state.status === "loading" && (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          Loading readings…
+          {t.loading}
         </p>
       )}
 
@@ -101,29 +106,25 @@ export function CommunityReadings({ regionId, regionName }: { regionId: string; 
       {data?.storage === null && (
         <p className="flex items-start gap-2 rounded-md bg-secondary/40 p-3 text-xs text-muted-foreground">
           <Database className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          Saving readings isn&apos;t enabled on this deployment yet: no database is connected.
+          {t.notEnabled}
         </p>
       )}
 
-      {data?.storage === "memory" && (
-        <p className="text-[11px] text-warning">
-          Local demo storage: readings are kept in memory and reset when the dev server restarts.
-        </p>
-      )}
+      {data?.storage === "memory" && <p className="text-[11px] text-warning">{t.memoryNote}</p>}
 
       {data && data.storage !== null && data.summary.count === 0 && (
         <p className="rounded-md border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
-          No readings yet. Be the first to add one for {regionName}.
+          {fmt(t.empty, { name: regionName })}
         </p>
       )}
 
       {averages.length > 0 && (
         <div>
-          <p className="text-[11px] text-muted-foreground mb-1.5">Community averages</p>
+          <p className="text-[11px] text-muted-foreground mb-1.5">{t.averages}</p>
           <div className="flex flex-wrap gap-1.5">
             {averages.map(({ attr, avg, n }) => (
               <span key={attr.id} className="rounded-md bg-primary/10 px-2 py-1 text-[11px] text-foreground">
-                {attr.label}:{" "}
+                {attrLabel(attr.id)}:{" "}
                 <span className="font-mono">
                   {formatValue(avg)}
                   {attr.unit && ` ${attr.unit}`}
@@ -141,16 +142,16 @@ export function CommunityReadings({ regionId, regionName }: { regionId: string; 
             <li key={obs.id} className="rounded-md border border-border bg-card p-2.5">
               <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
                 <span>
-                  {new Date(`${obs.observedOn}T00:00:00`).toLocaleDateString("en-IN", {
+                  {new Date(`${obs.observedOn}T00:00:00`).toLocaleDateString(`${lang}-IN`, {
                     day: "numeric",
                     month: "short",
                     year: "numeric",
                   })}{" "}
-                  · {SOURCE_LABEL[obs.sourceType] ?? obs.sourceType}
+                  · {sourceLabel(obs.sourceType)}
                 </span>
                 <span className="flex items-center gap-1">
                   <UserRound className="w-3 h-3" />
-                  {obs.contributor || "Anonymous"}
+                  {obs.contributor || t.anonymous}
                 </span>
               </div>
               <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
@@ -158,7 +159,7 @@ export function CommunityReadings({ regionId, regionName }: { regionId: string; 
                   const attr = ATTRIBUTES_BY_ID.get(key)
                   return (
                     <span key={key} className="text-xs text-foreground">
-                      <span className="text-muted-foreground">{attr?.label ?? key}</span>{" "}
+                      <span className="text-muted-foreground">{attrLabel(key)}</span>{" "}
                       <span className="font-mono">
                         {formatValue(value)}
                         {attr?.unit && ` ${attr.unit}`}
@@ -179,7 +180,7 @@ export function CommunityReadings({ regionId, regionName }: { regionId: string; 
           onClick={() => setShowAll((s) => !s)}
           className="text-xs text-primary hover:underline"
         >
-          {showAll ? "Show fewer" : `Show all ${data.observations.length} recent readings`}
+          {showAll ? t.showFewer : fmt(t.showAll, { count: data.observations.length })}
         </button>
       )}
 

@@ -27,12 +27,20 @@ import type { LayerDefinition, LayerId, LayersResponse, MapDatasetMeta, Region, 
 import type { Basemap, FocusRequest, MapView } from "./leaflet-map"
 import { RegionDetails } from "./region-details"
 import { formatValue } from "./format"
+import { useTheme } from "next-themes"
+import { useI18n } from "@/lib/i18n/provider"
+import type { Messages } from "@/lib/i18n/messages/en"
 
 // Leaflet touches `window`, so the map itself only renders in the browser.
 const LeafletMap = dynamic(() => import("./leaflet-map"), {
   ssr: false,
-  loading: () => <MapPlaceholder label="Loading map…" />,
+  loading: () => <LoadingMapPlaceholder />,
 })
+
+function LoadingMapPlaceholder() {
+  const { m } = useI18n()
+  return <MapPlaceholder label={m.map.loadingMap} />
+}
 
 const LAYER_ICONS: Record<LayerDefinition["icon"], React.ElementType> = {
   droplets: Droplets,
@@ -43,25 +51,42 @@ const LAYER_ICONS: Record<LayerDefinition["icon"], React.ElementType> = {
   waves: Waves,
 }
 
-const VIEWS: { id: MapView; label: string }[] = [
-  { id: "india", label: "India" },
-  { id: "tamil-nadu", label: "Tamil Nadu" },
-  { id: "chennai", label: "Chennai Metro" },
+type MapStrings = Messages["map"]
+
+const VIEWS: { id: MapView; label: keyof MapStrings }[] = [
+  { id: "india", label: "viewIndia" },
+  { id: "tamil-nadu", label: "viewTamilNadu" },
+  { id: "chennai", label: "viewChennai" },
 ]
 
-const BASEMAP_OPTIONS: { id: Basemap; label: string; icon: React.ElementType }[] = [
-  { id: "dark", label: "Dark", icon: Moon },
-  { id: "light", label: "Streets", icon: MapIcon },
-  { id: "satellite", label: "Satellite", icon: Satellite },
+const BASEMAP_OPTIONS: { id: Basemap; label: keyof MapStrings; icon: React.ElementType }[] = [
+  { id: "dark", label: "basemapDark", icon: Moon },
+  { id: "light", label: "basemapStreets", icon: MapIcon },
+  { id: "satellite", label: "basemapSatellite", icon: Satellite },
 ]
 
 type Scope = "all" | "metro" | "cities"
 
-const SCOPES: { id: Scope; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "metro", label: "Chennai metro" },
-  { id: "cities", label: "Cities & towns" },
+const SCOPES: { id: Scope; label: keyof MapStrings }[] = [
+  { id: "all", label: "scopeAll" },
+  { id: "metro", label: "scopeMetro" },
+  { id: "cities", label: "scopeCities" },
 ]
+
+// Layer definitions come from the API in English; swap in the UI language by layer id so every
+// consumer (legend, tooltips, rankings, details) is translated in one place.
+function localizeLayers(layers: LayerDefinition[], m: Messages): LayerDefinition[] {
+  return layers.map((layer) => {
+    const t = m.layers[layer.id]
+    return {
+      ...layer,
+      label: t.label,
+      shortLabel: t.short,
+      description: t.description,
+      bins: layer.bins.map((bin, i) => ({ ...bin, label: t.bins[i] ?? bin.label })),
+    }
+  })
+}
 
 type LoadState =
   | { status: "loading" }
@@ -69,10 +94,19 @@ type LoadState =
   | { status: "ready"; layers: LayerDefinition[]; regions: Region[]; meta: MapDatasetMeta }
 
 export function MapExplorer() {
+  const { m, fmt } = useI18n()
+  const t = m.map
+  const { resolvedTheme } = useTheme()
   const [load, setLoad] = useState<LoadState>({ status: "loading" })
   const [activeLayerId, setActiveLayerId] = useState<LayerId>("wqi")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [basemap, setBasemap] = useState<Basemap>("dark")
+
+  // Follow the site theme with the matching basemap, unless satellite is chosen.
+  useEffect(() => {
+    if (!resolvedTheme) return
+    setBasemap((current) => (current === "satellite" ? current : resolvedTheme === "light" ? "light" : "dark"))
+  }, [resolvedTheme])
   const [focus, setFocus] = useState<FocusRequest | null>(null)
   const [tab, setTab] = useState<"details" | "rankings">("rankings")
   const [scope, setScope] = useState<Scope>("all")
@@ -88,7 +122,7 @@ export function MapExplorer() {
       const { regions, meta }: RegionsResponse = await regionsRes.json()
       setLoad({ status: "ready", layers, regions, meta })
     } catch (error) {
-      setLoad({ status: "error", message: error instanceof Error ? error.message : "Failed to load map data." })
+      setLoad({ status: "error", message: error instanceof Error ? error.message : "" })
     }
   }, [])
 
@@ -96,7 +130,7 @@ export function MapExplorer() {
     fetchData()
   }, [fetchData])
 
-  const layers = load.status === "ready" ? load.layers : []
+  const layers = useMemo(() => (load.status === "ready" ? localizeLayers(load.layers, m) : []), [load, m])
   const regions = load.status === "ready" ? load.regions : []
   const activeLayer = layers.length ? getLayer(layers, activeLayerId) : null
   const selectedRegion = regions.find((r) => r.id === selectedId) ?? null
@@ -133,18 +167,21 @@ export function MapExplorer() {
               <Layers className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardTitle>India Water Map</CardTitle>
-              <CardDescription>Explore water quality, rainfall and scarcity layers across regions</CardDescription>
+              <CardTitle>{t.title}</CardTitle>
+              <CardDescription>{t.description}</CardDescription>
             </div>
           </div>
           <Badge variant="outline" className="border-warning/40 text-warning">
-            Estimated data · Tamil Nadu
+            {t.badge}
           </Badge>
         </div>
 
         {/* Layer selector */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2" role="radiogroup" aria-label="Map layer">
-          {(layers.length ? layers : PLACEHOLDER_LAYERS).map((layer) => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2" role="radiogroup" aria-label={t.layerAria}>
+          {(layers.length
+            ? layers
+            : PLACEHOLDER_LAYERS.map((p) => ({ ...p, shortLabel: m.layers[p.id].short }))
+          ).map((layer) => {
             const Icon = LAYER_ICONS[layer.icon]
             const active = layer.id === activeLayerId
             return (
@@ -183,14 +220,14 @@ export function MapExplorer() {
                 focus={focus}
               />
             ) : load.status === "error" ? (
-              <MapPlaceholder label={load.message}>
+              <MapPlaceholder label={load.message || t.loadError}>
                 <Button variant="outline" size="sm" onClick={fetchData}>
                   <RotateCcw className="w-4 h-4" />
-                  Retry
+                  {m.common.retry}
                 </Button>
               </MapPlaceholder>
             ) : (
-              <MapPlaceholder label="Loading map data…" />
+              <MapPlaceholder label={t.loadingData} />
             )}
 
             {/* View presets */}
@@ -205,10 +242,11 @@ export function MapExplorer() {
                   {view.id === "india" && <Globe className="w-3 h-3" />}
                   {view.id === "chennai" ? (
                     <>
-                      Chennai<span className="hidden sm:inline">&nbsp;Metro</span>
+                      <span className="sm:hidden">{t.viewChennaiShort}</span>
+                      <span className="hidden sm:inline">{t.viewChennai}</span>
                     </>
                   ) : (
-                    view.label
+                    t[view.label]
                   )}
                 </button>
               ))}
@@ -220,8 +258,8 @@ export function MapExplorer() {
                 <button
                   key={id}
                   type="button"
-                  title={label}
-                  aria-label={`${label} basemap`}
+                  title={t[label]}
+                  aria-label={fmt(t.basemapAria, { label: t[label] })}
                   aria-pressed={basemap === id}
                   onClick={() => setBasemap(id)}
                   className={`rounded p-1.5 ${
@@ -249,7 +287,7 @@ export function MapExplorer() {
                   />
                 </button>
                 <div className={`${legendOpen ? "block" : "hidden"} sm:block`}>
-                  <p className="text-[10px] text-muted-foreground mb-2">Unit: {activeLayer.unit}</p>
+                  <p className="text-[10px] text-muted-foreground mb-2">{fmt(t.unit, { unit: activeLayer.unit })}</p>
                   <ul className="space-y-1">
                     {activeLayer.bins.map((bin) => (
                       <li key={bin.from} className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -259,7 +297,7 @@ export function MapExplorer() {
                     ))}
                   </ul>
                   <p className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground">
-                    Data covers Tamil Nadu. Other states coming soon.
+                    {t.coverage}
                   </p>
                 </div>
               </div>
@@ -271,10 +309,10 @@ export function MapExplorer() {
             <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
               <TabsList className="w-full">
                 <TabsTrigger value="rankings" className="flex-1">
-                  Rankings
+                  {t.rankings}
                 </TabsTrigger>
                 <TabsTrigger value="details" className="flex-1">
-                  Region details
+                  {t.details}
                 </TabsTrigger>
               </TabsList>
 
@@ -283,9 +321,9 @@ export function MapExplorer() {
                   <>
                     <p className="text-xs text-muted-foreground leading-relaxed">{activeLayer.description}</p>
                     <div className="grid grid-cols-3 gap-2">
-                      <SummaryStat label="State avg" value={formatValue(summary.average)} unit={activeLayer.unit} />
-                      <SummaryStat label="Lowest" value={formatValue(summary.min)} unit={activeLayer.unit} />
-                      <SummaryStat label="Highest" value={formatValue(summary.max)} unit={activeLayer.unit} />
+                      <SummaryStat label={t.stateAvg} value={formatValue(summary.average)} unit={activeLayer.unit} />
+                      <SummaryStat label={t.lowest} value={formatValue(summary.min)} unit={activeLayer.unit} />
+                      <SummaryStat label={t.highest} value={formatValue(summary.max)} unit={activeLayer.unit} />
                     </div>
 
                     <div className="flex items-center justify-between gap-2">
@@ -299,7 +337,7 @@ export function MapExplorer() {
                               scope === s.id ? "bg-card text-foreground" : "text-muted-foreground hover:text-foreground"
                             }`}
                           >
-                            {s.label}
+                            {t[s.label]}
                           </button>
                         ))}
                       </div>
@@ -309,7 +347,7 @@ export function MapExplorer() {
                         className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
                       >
                         <ArrowUpDown className="w-3 h-3" />
-                        {worstFirst ? "Worst first" : "Best first"}
+                        {worstFirst ? t.worstFirst : t.bestFirst}
                       </button>
                     </div>
 
@@ -342,7 +380,7 @@ export function MapExplorer() {
                     </ol>
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Loading rankings…</p>
+                  <p className="text-sm text-muted-foreground">{t.loadingRankings}</p>
                 )}
               </TabsContent>
 
@@ -361,11 +399,8 @@ export function MapExplorer() {
                 ) : (
                   <div className="py-10 text-center">
                     <MapIcon className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm text-foreground">No region selected</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Click a marker on the map or a row in Rankings to see its full profile and add your own
-                      readings.
-                    </p>
+                    <p className="text-sm text-foreground">{t.noRegion}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t.noRegionHint}</p>
                   </div>
                 )}
               </TabsContent>
@@ -375,7 +410,7 @@ export function MapExplorer() {
 
         {load.status === "ready" && (
           <p className="mt-3 text-[11px] text-muted-foreground">
-            {load.meta.disclaimer} Last updated {load.meta.updated}.
+            {t.disclaimer} {fmt(t.lastUpdated, { date: load.meta.updated })}
           </p>
         )}
       </CardContent>

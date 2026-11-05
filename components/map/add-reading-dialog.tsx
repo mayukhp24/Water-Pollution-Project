@@ -22,6 +22,8 @@ import {
   type ObservationAttribute,
   type SourceTypeId,
 } from "@/lib/observations/attributes"
+import { useI18n } from "@/lib/i18n/provider"
+import type { Messages } from "@/lib/i18n/messages/en"
 
 const BASIC_SET = ["waterTemp", "ph", "tds", "turbidity"]
 
@@ -40,6 +42,9 @@ interface AddReadingDialogProps {
 }
 
 export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onSaved }: AddReadingDialogProps) {
+  const { m, fmt } = useI18n()
+  const t = m.addReading
+  const attrLabel = (id: string) => m.attributes[id as keyof Messages["attributes"]] ?? id
   const [selected, setSelected] = useState<string[]>([])
   const [values, setValues] = useState<Record<string, string>>({})
   const [observedOn, setObservedOn] = useState(todayLocal)
@@ -60,15 +65,15 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
     const errors: Record<string, string> = {}
     for (const attr of selectedAttributes) {
       const raw = values[attr.id]?.trim() ?? ""
-      if (raw === "") errors[attr.id] = "Enter a value or remove this field"
+      if (raw === "") errors[attr.id] = t.errEmpty
       else {
         const n = Number(raw)
-        if (!Number.isFinite(n)) errors[attr.id] = "Must be a number"
-        else if (n < attr.min || n > attr.max) errors[attr.id] = `Must be ${attr.min}–${attr.max}`
+        if (!Number.isFinite(n)) errors[attr.id] = t.errNumber
+        else if (n < attr.min || n > attr.max) errors[attr.id] = fmt(t.errRange, { min: attr.min, max: attr.max })
       }
     }
     return errors
-  }, [selectedAttributes, values])
+  }, [selectedAttributes, values, t, fmt])
 
   const canSubmit = selectedAttributes.length > 0 && Object.keys(fieldErrors).length === 0 && !submitting
 
@@ -112,15 +117,13 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add a reading for {regionName}</DialogTitle>
-          <DialogDescription>
-            Pick only the things you measured. One value is enough; you don&apos;t need to fill everything.
-          </DialogDescription>
+          <DialogTitle>{fmt(t.title, { name: regionName })}</DialogTitle>
+          <DialogDescription>{t.description}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="observed-on">Date measured</Label>
+            <Label htmlFor="observed-on">{t.date}</Label>
             <Input
               id="observed-on"
               type="date"
@@ -131,7 +134,7 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Water source</Label>
+            <Label>{t.source}</Label>
             <Select value={sourceType} onValueChange={(v) => setSourceType(v as SourceTypeId)}>
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -139,7 +142,7 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
               <SelectContent>
                 {SOURCE_TYPES.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.label}
+                    {m.sources[s.id]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -150,10 +153,10 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
         {/* Attribute picker */}
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Label>What did you measure?</Label>
+            <Label>{t.what}</Label>
             <div className="flex gap-1">
               <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(BASIC_SET)}>
-                Basic set
+                {t.basicSet}
               </Button>
               <Button
                 type="button"
@@ -162,16 +165,18 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
                 className="h-7 text-xs"
                 onClick={() => setSelected(OBSERVATION_ATTRIBUTES.map((a) => a.id))}
               >
-                Select all
+                {t.selectAll}
               </Button>
               <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected([])}>
-                Clear
+                {t.clear}
               </Button>
             </div>
           </div>
           {ATTRIBUTE_GROUPS.map((group) => (
             <div key={group}>
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">{group}</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">
+                {m.attributeGroups[group]}
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {OBSERVATION_ATTRIBUTES.filter((a) => a.group === group).map((attr) => {
                   const on = selected.includes(attr.id)
@@ -188,7 +193,7 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
                       }`}
                     >
                       {on ? <Check className="w-3 h-3 text-primary" /> : <Plus className="w-3 h-3" />}
-                      {attr.label}
+                      {attrLabel(attr.id)}
                     </button>
                   )
                 })}
@@ -204,6 +209,7 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
               <ValueField
                 key={attr.id}
                 attribute={attr}
+                label={attrLabel(attr.id)}
                 value={values[attr.id] ?? ""}
                 error={values[attr.id] !== undefined ? fieldErrors[attr.id] : undefined}
                 onChange={(v) => setValues((prev) => ({ ...prev, [attr.id]: v }))}
@@ -213,30 +219,30 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
           </div>
         ) : (
           <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-            Tap one or more measurements above to add them.
+            {t.emptyPick}
           </p>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="contributor">Your name (optional)</Label>
+            <Label htmlFor="contributor">{t.name}</Label>
             <Input
               id="contributor"
               maxLength={60}
               value={contributor}
               onChange={(e) => setContributor(e.target.value)}
-              placeholder="Shown with your reading"
+              placeholder={t.namePlaceholder}
             />
           </div>
           <div className="space-y-1.5 sm:row-span-2">
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">{t.notes}</Label>
             <Textarea
               id="notes"
               maxLength={500}
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. tested with a TDS meter at home tap"
+              placeholder={t.notesPlaceholder}
             />
           </div>
         </div>
@@ -258,11 +264,11 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {m.common.cancel}
           </Button>
           <Button type="button" onClick={submit} disabled={!canSubmit}>
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            Save reading{selectedAttributes.length > 1 ? ` (${selectedAttributes.length} values)` : ""}
+            {selectedAttributes.length > 1 ? fmt(t.saveCount, { count: selectedAttributes.length }) : t.save}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -270,31 +276,39 @@ export function AddReadingDialog({ open, onOpenChange, regionId, regionName, onS
   )
 }
 
+const HINT_KEYS = { Safe: "hintSafe", Healthy: "hintHealthy", Target: "hintTarget" } as const
+
 function ValueField({
   attribute,
+  label,
   value,
   error,
   onChange,
   onRemove,
 }: {
   attribute: ObservationAttribute
+  label: string
   value: string
   error?: string
   onChange: (value: string) => void
   onRemove: () => void
 }) {
+  const { m, fmt } = useI18n()
+  const t = m.addReading
   const id = `reading-${attribute.id}`
+  // Hints are "Safe < 1" style: translate the leading word, keep the numeric range as-is.
+  const hint = attribute.hint?.replace(/^(Safe|Healthy|Target)\b/, (word) => t[HINT_KEYS[word as keyof typeof HINT_KEYS]])
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
         <Label htmlFor={id} className="text-xs">
-          {attribute.label}
+          {label}
         </Label>
         <button
           type="button"
           onClick={onRemove}
           className="text-muted-foreground hover:text-foreground"
-          aria-label={`Remove ${attribute.label}`}
+          aria-label={fmt(t.remove, { label })}
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -319,7 +333,7 @@ function ValueField({
         )}
       </div>
       <p className={`text-[11px] ${error ? "text-destructive" : "text-muted-foreground"}`}>
-        {error ?? attribute.hint ?? `Range ${attribute.min}–${attribute.max}`}
+        {error ?? hint ?? fmt(t.range, { min: attribute.min, max: attribute.max })}
       </p>
     </div>
   )

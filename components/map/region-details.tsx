@@ -1,6 +1,8 @@
 "use client"
 
+import { useMemo } from "react"
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { useI18n } from "@/lib/i18n/provider"
 import { MapPin, Users, Droplet, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getBin } from "@/lib/map/layers"
@@ -8,11 +10,7 @@ import type { LayerDefinition, LayerId, Region } from "@/lib/map/types"
 import { CommunityReadings } from "./community-readings"
 import { formatPopulation, formatValue } from "./format"
 
-const KIND_LABEL: Record<Region["kind"], string> = {
-  "metro-locality": "Chennai metro locality",
-  city: "City",
-  town: "Town",
-}
+const KIND_KEY = { "metro-locality": "kindMetro", city: "kindCity", town: "kindTown" } as const
 
 interface RegionDetailsProps {
   region: Region
@@ -23,6 +21,14 @@ interface RegionDetailsProps {
 }
 
 export function RegionDetails({ region, layers, activeLayer, onLayerChange, onClose }: RegionDetailsProps) {
+  const { m, lang } = useI18n()
+  const t = m.region
+  // Month names come from Intl so every language gets its own without extra strings.
+  const monthly = useMemo(() => {
+    const monthFormat = new Intl.DateTimeFormat(`${lang}-IN`, { month: "short" })
+    return region.monthlyRainfall.map((entry, i) => ({ ...entry, month: monthFormat.format(new Date(2024, i, 1)) }))
+  }, [region, lang])
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3">
@@ -30,10 +36,10 @@ export function RegionDetails({ region, layers, activeLayer, onLayerChange, onCl
           <h4 className="text-lg font-semibold text-foreground">{region.name}</h4>
           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
             <MapPin className="w-3 h-3" />
-            {region.district}, {region.state} · {KIND_LABEL[region.kind]}
+            {region.district}, {region.state} · {t[KIND_KEY[region.kind]]}
           </p>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1" onClick={onClose} aria-label="Close details">
+        <Button variant="ghost" size="icon" className="h-7 w-7 -mr-1" onClick={onClose} aria-label={t.close}>
           <X className="w-4 h-4" />
         </Button>
       </div>
@@ -67,10 +73,10 @@ export function RegionDetails({ region, layers, activeLayer, onLayerChange, onCl
       </div>
 
       <div>
-        <p className="text-xs font-medium text-foreground mb-2">Monthly rainfall (mm)</p>
+        <p className="text-xs font-medium text-foreground mb-2">{t.monthlyRainfall}</p>
         <div className="h-32">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={region.monthlyRainfall} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
+            <BarChart data={monthly} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
               <XAxis
                 dataKey="month"
                 tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
@@ -89,7 +95,7 @@ export function RegionDetails({ region, layers, activeLayer, onLayerChange, onCl
                 }}
                 labelStyle={{ color: "var(--foreground)" }}
                 itemStyle={{ color: "var(--primary)" }}
-                formatter={(v) => [`${v} mm`, "Rainfall"]}
+                formatter={(v) => [`${v} mm`, t.rainfall]}
               />
               <Bar dataKey="mm" fill="var(--chart-1)" radius={[3, 3, 0, 0]} />
             </BarChart>
@@ -98,9 +104,9 @@ export function RegionDetails({ region, layers, activeLayer, onLayerChange, onCl
       </div>
 
       <dl className="space-y-2.5 text-sm">
-        <DetailRow icon={Users} label="Population (est.)" value={formatPopulation(region.population)} />
-        <DetailRow icon={Droplet} label="Primary source" value={region.primarySource} />
-        <DetailRow icon={Droplet} label="Average pH" value={region.ph.toFixed(1)} />
+        <DetailRow icon={Users} label={t.population} value={formatPopulation(region.population)} />
+        <DetailRow icon={Droplet} label={t.primarySource} value={region.primarySource} />
+        <DetailRow icon={Droplet} label={t.avgPh} value={region.ph.toFixed(1)} />
       </dl>
 
       <p className="text-xs text-muted-foreground leading-relaxed rounded-md bg-secondary/40 p-3">{region.notes}</p>

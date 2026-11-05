@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { CheckCircle2, XCircle, AlertTriangle, Droplets } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { useI18n } from "@/lib/i18n/provider"
 
 interface ResultDisplayProps {
   result: "safe" | "unsafe" | "warning" | null
@@ -11,6 +12,9 @@ interface ResultDisplayProps {
 }
 
 export function ResultDisplay({ result, confidence = 0, issues = [] }: ResultDisplayProps) {
+  const { m, fmt } = useI18n()
+  const r = m.result
+
   if (result === null) {
     return (
       <Card className="bg-card border-border">
@@ -18,12 +22,8 @@ export function ResultDisplay({ result, confidence = 0, issues = [] }: ResultDis
           <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
             <Droplets className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            Enter Water Parameters
-          </h3>
-          <p className="text-muted-foreground text-sm max-w-sm">
-            Input your water quality measurements to analyze if the water is safe for consumption.
-          </p>
+          <h3 className="text-lg font-semibold text-foreground mb-2">{r.emptyTitle}</h3>
+          <p className="text-muted-foreground text-sm max-w-sm">{r.emptyDesc}</p>
         </CardContent>
       </Card>
     )
@@ -32,8 +32,8 @@ export function ResultDisplay({ result, confidence = 0, issues = [] }: ResultDis
   const configs = {
     safe: {
       icon: CheckCircle2,
-      title: "Safe to Drink",
-      description: "All parameters are within acceptable ranges for drinking water.",
+      title: r.safeTitle,
+      description: r.safeDesc,
       bgClass: "bg-success/10",
       borderClass: "border-success/30",
       iconClass: "text-success",
@@ -41,8 +41,8 @@ export function ResultDisplay({ result, confidence = 0, issues = [] }: ResultDis
     },
     warning: {
       icon: AlertTriangle,
-      title: "Caution Advised",
-      description: "Some parameters are borderline. Additional treatment may be recommended.",
+      title: r.warningTitle,
+      description: r.warningDesc,
       bgClass: "bg-warning/10",
       borderClass: "border-warning/30",
       iconClass: "text-warning",
@@ -50,8 +50,8 @@ export function ResultDisplay({ result, confidence = 0, issues = [] }: ResultDis
     },
     unsafe: {
       icon: XCircle,
-      title: "Not Safe to Drink",
-      description: "One or more parameters exceed safe drinking water standards.",
+      title: r.unsafeTitle,
+      description: r.unsafeDesc,
       bgClass: "bg-destructive/10",
       borderClass: "border-destructive/30",
       iconClass: "text-destructive",
@@ -75,7 +75,7 @@ export function ResultDisplay({ result, confidence = 0, issues = [] }: ResultDis
                 {config.title}
               </h3>
               <span className={cn("px-2 py-0.5 rounded text-xs font-medium", config.badgeClass)}>
-                {confidence}% Confidence
+                {fmt(r.confidence, { value: confidence })}
               </span>
             </div>
             <p className="text-muted-foreground text-sm mb-4">
@@ -83,7 +83,7 @@ export function ResultDisplay({ result, confidence = 0, issues = [] }: ResultDis
             </p>
             {issues.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Issues Detected:</p>
+                <p className="text-sm font-medium text-foreground">{r.issuesDetected}</p>
                 <ul className="space-y-1">
                   {issues.map((issue, index) => (
                     <li key={index} className="text-sm text-muted-foreground flex items-center gap-2">

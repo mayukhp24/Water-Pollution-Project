@@ -10,6 +10,8 @@ import { StandardsTable } from "./standards-table"
 import { QualityDonutChart } from "./quality-donut-chart"
 import { ReuseRecommendations } from "./reuse-recommendations"
 import type { AnalyzedReading } from "@/lib/reuse/types"
+import { useI18n } from "@/lib/i18n/provider"
+import type { Messages } from "@/lib/i18n/messages/en"
 import { Beaker, RotateCcw, FlaskConical, Atom, Bug, Droplets } from "lucide-react"
 
 // Parameter Categories
@@ -390,13 +392,25 @@ const ALL_PARAMETERS = [...PHYSICAL_PARAMETERS, ...CHEMICAL_PARAMETERS, ...BIOLO
 
 type ParameterValues = Record<string, string>
 
+interface DetectedIssue {
+  kind: "warning" | "danger"
+  id: string
+  value: string
+  unit: string
+}
+
+type ParamId = keyof Messages["params"]
+
 export function WaterQualityAnalyzer() {
+  const { m, fmt } = useI18n()
+  const paramLabel = (id: string) => m.params[id as ParamId] ?? id
   const [values, setValues] = useState<ParameterValues>(
     ALL_PARAMETERS.reduce((acc, param) => ({ ...acc, [param.id]: "" }), {})
   )
   const [result, setResult] = useState<"safe" | "unsafe" | "warning" | null>(null)
   const [confidence, setConfidence] = useState(0)
-  const [issues, setIssues] = useState<string[]>([])
+  // Stored as data, not text, so the list re-renders in the current language.
+  const [issues, setIssues] = useState<DetectedIssue[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [activeTab, setActiveTab] = useState("physical")
   // Snapshot of the inputs at the moment of analysis, so editing a field doesn't re-run reuse advice.
@@ -461,7 +475,7 @@ export function WaterQualityAnalyzer() {
     await new Promise((resolve) => setTimeout(resolve, 1500))
 
     const filledParams = ALL_PARAMETERS.filter((param) => values[param.id])
-    const detectedIssues: string[] = []
+    const detectedIssues: DetectedIssue[] = []
     let safeCount = 0
     let warningCount = 0
     let dangerCount = 0
@@ -471,11 +485,11 @@ export function WaterQualityAnalyzer() {
       if (status === "safe") safeCount++
       if (status === "warning") {
         warningCount++
-        detectedIssues.push(`${param.label} is slightly outside optimal range`)
+        detectedIssues.push({ kind: "warning", id: param.id, value: values[param.id], unit: param.unit })
       }
       if (status === "danger") {
         dangerCount++
-        detectedIssues.push(`${param.label} exceeds safe limits (${values[param.id]} ${param.unit})`)
+        detectedIssues.push({ kind: "danger", id: param.id, value: values[param.id], unit: param.unit })
       }
     })
 
@@ -518,7 +532,7 @@ export function WaterQualityAnalyzer() {
         : BIOLOGICAL_PARAMETERS
 
     return params.map((param) => ({
-      name: param.label,
+      name: paramLabel(param.id),
       value: values[param.id] ? parseFloat(values[param.id]) : null,
       unit: param.unit,
       safeMin: param.safeMin,
@@ -534,7 +548,8 @@ export function WaterQualityAnalyzer() {
       {params.map((param) => (
         <ParameterInput
           key={param.id}
-          label={param.label}
+          id={`param-${param.id}`}
+          label={paramLabel(param.id)}
           value={values[param.id]}
           onChange={(value) => handleValueChange(param.id, value)}
           unit={param.unit}
@@ -560,10 +575,8 @@ export function WaterQualityAnalyzer() {
                 <Beaker className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">Water Parameters</CardTitle>
-                <CardDescription>
-                  Enter your water test measurements across categories
-                </CardDescription>
+                <CardTitle className="text-lg">{m.analyzer.title}</CardTitle>
+                <CardDescription>{m.analyzer.description}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -572,15 +585,15 @@ export function WaterQualityAnalyzer() {
               <TabsList className="grid w-full grid-cols-3 mb-4">
                 <TabsTrigger value="physical" className="flex items-center gap-2">
                   <Droplets className="w-4 h-4" />
-                  <span className="hidden sm:inline">Physical</span>
+                  <span className="hidden sm:inline">{m.analyzer.physical}</span>
                 </TabsTrigger>
                 <TabsTrigger value="chemical" className="flex items-center gap-2">
                   <Atom className="w-4 h-4" />
-                  <span className="hidden sm:inline">Chemical</span>
+                  <span className="hidden sm:inline">{m.analyzer.chemical}</span>
                 </TabsTrigger>
                 <TabsTrigger value="biological" className="flex items-center gap-2">
                   <Bug className="w-4 h-4" />
-                  <span className="hidden sm:inline">Biological</span>
+                  <span className="hidden sm:inline">{m.analyzer.biological}</span>
                 </TabsTrigger>
               </TabsList>
               
@@ -612,12 +625,12 @@ export function WaterQualityAnalyzer() {
                 {isAnalyzing ? (
                   <>
                     <FlaskConical className="w-4 h-4 mr-2 animate-pulse" />
-                    Analyzing...
+                    {m.analyzer.analyzing}
                   </>
                 ) : (
                   <>
                     <FlaskConical className="w-4 h-4 mr-2" />
-                    Analyze Water Quality
+                    {m.analyzer.analyze}
                   </>
                 )}
               </Button>
@@ -628,7 +641,7 @@ export function WaterQualityAnalyzer() {
                 className="border-border text-foreground hover:bg-secondary"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span className="sr-only">Reset</span>
+                <span className="sr-only">{m.analyzer.reset}</span>
               </Button>
             </div>
           </CardContent>
@@ -640,15 +653,23 @@ export function WaterQualityAnalyzer() {
           <QualityDonutChart data={chartData} result={result} />
   
           {/* Result Display */}
-          <ResultDisplay result={result} confidence={confidence} issues={issues} />
+          <ResultDisplay
+            result={result}
+            confidence={confidence}
+            issues={issues.map((issue) =>
+              issue.kind === "warning"
+                ? fmt(m.analyzer.issueWarning, { label: paramLabel(issue.id) })
+                : fmt(m.analyzer.issueDanger, { label: paramLabel(issue.id), value: issue.value, unit: issue.unit }),
+            )}
+          />
   
           {/* Standards Table */}
           {hasAnyValue && (
             <Tabs defaultValue="physical" className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-4">
-                <TabsTrigger value="physical">Physical</TabsTrigger>
-                <TabsTrigger value="chemical">Chemical</TabsTrigger>
-                <TabsTrigger value="biological">Biological</TabsTrigger>
+                <TabsTrigger value="physical">{m.analyzer.physical}</TabsTrigger>
+                <TabsTrigger value="chemical">{m.analyzer.chemical}</TabsTrigger>
+                <TabsTrigger value="biological">{m.analyzer.biological}</TabsTrigger>
               </TabsList>
               <TabsContent value="physical">
                 <StandardsTable parameters={getTableParameters("physical")} />
