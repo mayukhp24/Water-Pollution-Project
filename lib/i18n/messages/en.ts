@@ -106,6 +106,9 @@ const en = {
     caution: "Caution",
     unsafe: "Unsafe",
     parameterCount: "{count} parameter(s)",
+    percentHelpLabel: "What does this percentage mean?",
+    percentHelp:
+      "Share of the parameters you filled in that are within the safe range. Empty fields aren't counted. The word below is the overall verdict: a single dangerous value makes it Unsafe.",
   },
 
   result: {

@@ -2,6 +2,14 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useRef, useState } from "react"
+import { HelpCircle } from "lucide-react"
+import {
+  Tooltip as UiTooltip,
+  TooltipContent as UiTooltipContent,
+  TooltipProvider as UiTooltipProvider,
+  TooltipTrigger as UiTooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useI18n } from "@/lib/i18n/provider"
 
@@ -100,8 +108,9 @@ export function QualityDonutChart({ data, result }: QualityDonutChartProps) {
           
           {/* Center Label */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ top: '-18px' }}>
-            <span className={cn("text-3xl font-bold", resultLabel.color)}>
+            <span className={cn("relative text-3xl font-bold", resultLabel.color)}>
               {data.neutralCount === data.totalParameters ? "--" : `${percentage}%`}
+              <PercentHelp label={s.percentHelpLabel} text={s.percentHelp} />
             </span>
             <span className={cn("text-sm font-medium", resultLabel.color)}>
               {resultLabel.text}
@@ -130,5 +139,36 @@ export function QualityDonutChart({ data, result }: QualityDonutChartProps) {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+// "?" next to the centre percentage. Opens on hover/focus, and on tap for touch screens,
+// which don't hover. The surrounding label is pointer-events-none, so this re-enables them.
+function PercentHelp({ label, text }: { label: string; text: string }) {
+  const [open, setOpen] = useState(false)
+  // Radix closes the tooltip on pointerdown, before our click runs, so remember the state at
+  // pointerdown and toggle from that — otherwise a second tap would just reopen it.
+  const wasOpen = useRef(false)
+  return (
+    <UiTooltipProvider delayDuration={100}>
+      <UiTooltip open={open} onOpenChange={setOpen}>
+        <UiTooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={label}
+            onPointerDown={() => {
+              wasOpen.current = open
+            }}
+            onClick={() => setOpen(!wasOpen.current)}
+            className="pointer-events-auto absolute -top-1 -right-5 flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
+        </UiTooltipTrigger>
+        <UiTooltipContent side="top" className="max-w-[260px] text-xs font-normal leading-relaxed">
+          {text}
+        </UiTooltipContent>
+      </UiTooltip>
+    </UiTooltipProvider>
   )
 }
