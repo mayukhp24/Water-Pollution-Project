@@ -26,21 +26,51 @@ const requestSchema = z.object({
 const VERDICTS = ["suitable", "with_treatment", "not_suitable"] as const
 
 const itemSchema = z.object({
-  use: z.string().min(1).max(80),
+  use: z.string().min(1).max(120),
   verdict: z.preprocess(
     (v) => (typeof v === "string" ? v.toLowerCase().replace(/[\s-]+/g, "_") : v),
     z.enum(VERDICTS),
   ),
-  reason: z.string().min(1).max(400),
-  treatment: z.string().max(200).nullish(),
+  reason: z.string().min(1).max(800),
+  treatment: z.string().max(400).nullish(),
 })
 
+// Lenient on length (the prompt asks for 4-6 uses); extra items are trimmed rather than rejected.
 const aiSchema = z.object({
-  summary: z.string().min(1).max(500),
-  domestic: z.array(itemSchema).min(1).max(8),
-  industry: z.array(itemSchema).min(1).max(8),
-  tips: z.array(z.string().max(300)).max(5).default([]),
+  summary: z.string().min(1).max(1000),
+  domestic: z.array(itemSchema).min(1).transform((items) => items.slice(0, 8)),
+  industry: z.array(itemSchema).min(1).transform((items) => items.slice(0, 8)),
+  tips: z
+    .array(z.string().max(500))
+    .default([])
+    .transform((tips) => tips.slice(0, 4)),
 })
+
+// Same shape as aiSchema, in the JSON Schema subset Groq's strict mode accepts
+// (every property required, no additional properties, nullable via a type union).
+const ITEM_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["use", "verdict", "reason", "treatment"],
+  properties: {
+    use: { type: "string" },
+    verdict: { type: "string", enum: [...VERDICTS] },
+    reason: { type: "string" },
+    treatment: { type: ["string", "null"] },
+  },
+}
+
+const RESPONSE_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["summary", "domestic", "industry", "tips"],
+  properties: {
+    summary: { type: "string" },
+    domestic: { type: "array", items: ITEM_JSON_SCHEMA },
+    industry: { type: "array", items: ITEM_JSON_SCHEMA },
+    tips: { type: "array", items: { type: "string" } },
+  },
+}
 
 const SYSTEM_PROMPT = `You are a water-reuse engineer in India advising households and industries.
 Given lab measurements of a water sample, recommend where the water can still be used, even if it is not drinkable.
@@ -90,53 +120,74 @@ export async function POST(req: Request) {
     })
     .join("\n")
 
-  try {
-    const groq = new Groq({ apiKey })
-    const completion = await groq.chat.completions.create({
-      model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
-      temperature: 0.4,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: `Drinking-water verdict from our analyzer: ${drinkingResult}.\nMeasured parameters:\n${sample}`,
-        },
-      ],
-    })
+  const groq = new Groq({ apiKey })
+  const model = process.env.GROQ_MODEL || "openai/gpt-oss-20b"
+  const messages = [
+    { role: "system" as const, content: SYSTEM_PROMPT },
+    {
+      role: "user" as const,
+      content: `Drinking-water verdict from our analyzer: ${drinkingResult}.\nMeasured parameters:\n${sample}`,
+    },
+  ]
 
-    const raw = completion.choices[0]?.message?.content ?? ""
-    let json: unknown = null
+  // Strict structured outputs first (constrained decoding, so the shape is guaranteed on models that
+  // support it, such as gpt-oss). If that fails — unsupported model or a transient error — retry once
+  // with plain JSON mode. Errors from either attempt are logged and the client falls back to rules.
+  const attempts = [
+    { type: "json_schema" as const, json_schema: { name: "reuse_feed", strict: true, schema: RESPONSE_JSON_SCHEMA } },
+    { type: "json_object" as const },
+  ]
+
+  let lastError = "Failed to get AI recommendations."
+  for (const response_format of attempts) {
     try {
-      json = JSON.parse(raw)
-    } catch {
-      // handled below as an unexpected shape
-    }
-    const result = aiSchema.safeParse(json)
-    if (!result.success) {
-      console.error("AI recommendations had an unexpected shape:", result.error.issues[0], raw.slice(0, 500))
-      return NextResponse.json({ error: "The AI returned an unexpected answer. Try again." }, { status: 502 })
-    }
+      const completion = await groq.chat.completions.create({
+        model,
+        temperature: 0.4,
+        // Keeps gpt-oss fast and light on the per-minute token budget; ignored by other models.
+        ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" as const } : {}),
+        response_format,
+        messages,
+      })
 
-    const toItems = (items: z.infer<typeof itemSchema>[], sector: "domestic" | "industry") =>
-      items.map((i) => ({
-        use: i.use,
-        sector,
-        verdict: i.verdict,
-        reason: i.reason,
-        treatment: i.verdict === "suitable" ? null : (i.treatment ?? null),
-      }))
-
-    const feed: ReuseFeed = {
-      source: "ai",
-      summary: result.data.summary,
-      domestic: toItems(result.data.domestic, "domestic"),
-      industry: toItems(result.data.industry, "industry"),
-      tips: result.data.tips,
+      const raw = completion.choices[0]?.message?.content ?? ""
+      let json: unknown = null
+      try {
+        json = JSON.parse(raw)
+      } catch {
+        // handled below as an unexpected shape
+      }
+      const result = aiSchema.safeParse(json)
+      if (!result.success) {
+        console.error(`AI recommendations (${response_format.type}) had an unexpected shape:`, result.error.issues[0], raw.slice(0, 300))
+        lastError = "The AI returned an unexpected answer."
+        continue
+      }
+      return NextResponse.json({ feed: toFeed(result.data) })
+    } catch (error: any) {
+      console.error(`AI recommendations (${response_format.type}) failed:`, error?.message ?? error)
+      lastError = error?.status === 429 ? "The AI is busy (rate limit). Try again in a minute." : lastError
     }
-    return NextResponse.json({ feed })
-  } catch (error: any) {
-    console.error("AI recommendations failed:", error)
-    return NextResponse.json({ error: error?.message || "Failed to get AI recommendations." }, { status: 500 })
+  }
+
+  return NextResponse.json({ error: lastError }, { status: 502 })
+}
+
+function toFeed(data: z.infer<typeof aiSchema>): ReuseFeed {
+  const toItems = (items: z.infer<typeof itemSchema>[], sector: "domestic" | "industry") =>
+    items.map((i) => ({
+      use: i.use,
+      sector,
+      verdict: i.verdict,
+      reason: i.reason,
+      treatment: i.verdict === "suitable" ? null : (i.treatment ?? null),
+    }))
+
+  return {
+    source: "ai",
+    summary: data.summary,
+    domestic: toItems(data.domestic, "domestic"),
+    industry: toItems(data.industry, "industry"),
+    tips: data.tips,
   }
 }
