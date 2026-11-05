@@ -31,7 +31,7 @@ export function HomePages() {
           </div>
           <div>
             <h1 className="text-base md:text-lg font-semibold text-foreground">AquaCheck</h1>
-            <p className="text-xs text-muted-foreground">{m.common.tagline}</p>
+            <p className="hidden text-xs text-muted-foreground min-[420px]:block">{m.common.tagline}</p>
           </div>
         </div>
       }

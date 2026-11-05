@@ -28,6 +28,19 @@ export function SwipeTabs({
   const indicatorRef = useRef<HTMLSpanElement>(null)
   const [active, setActive] = useState(0)
   const activeRef = useRef(0)
+  const headerRef = useRef<HTMLElement>(null)
+  // The header floats over the pages; track its height (it wraps to two rows on phones) so each
+  // page starts below it. 112px is a close first guess that avoids a jump before measuring.
+  const [headerHeight, setHeaderHeight] = useState(112)
+
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => setHeaderHeight(el.offsetHeight))
+    observer.observe(el)
+    setHeaderHeight(el.offsetHeight)
+    return () => observer.disconnect()
+  }, [])
 
   const goTo = useCallback((index: number, smooth = true) => {
     const el = scrollerRef.current
@@ -98,10 +111,26 @@ export function SwipeTabs({
   return (
     // `relative` on the root and on each page makes absolutely positioned descendants (e.g. sr-only labels)
     // clip inside their page instead of stretching the document and making the whole window scroll.
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
-      <header className="shrink-0 border-b border-border bg-card/50 backdrop-blur-sm z-50">
+    <div className="relative h-dvh overflow-hidden bg-background">
+      {/* Frosted blue glass bar. It floats over the pages (which are padded by its height) so content
+          scrolls underneath and shows through the blur. */}
+      <header
+        ref={headerRef}
+        className={cn(
+          "absolute inset-x-0 top-0 z-50 backdrop-blur-xl backdrop-saturate-150",
+          "bg-white/50 bg-gradient-to-r from-sky-400/35 via-cyan-300/15 to-blue-500/30",
+          "dark:bg-background/45 dark:from-sky-500/30 dark:via-cyan-400/10 dark:to-blue-600/35",
+          "border-b border-sky-500/20 dark:border-sky-400/15",
+          "shadow-[0_8px_30px_-12px_rgba(14,165,233,0.35)] dark:shadow-[0_8px_30px_-12px_rgba(56,189,248,0.3)]",
+        )}
+      >
+        {/* Thin glowing edge along the bottom of the bar. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent"
+        />
         {/* Phone: logo + controls on one row, tabs full width below. Desktop: logo | tabs | controls. */}
-        <div className="container mx-auto flex flex-wrap items-center gap-x-6 px-4 pt-3 md:flex-nowrap md:pt-0">
+        <div className="container mx-auto flex flex-wrap items-center gap-x-3 px-4 pt-3 md:flex-nowrap md:gap-x-6 md:pt-0">
           <div className="order-1">{header}</div>
           <div className="order-2 ml-auto md:order-3 md:ml-0">{actions}</div>
           <nav
@@ -144,7 +173,7 @@ export function SwipeTabs({
 
       <div
         ref={scrollerRef}
-        className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex h-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {pages.map((page, i) => (
           <section
@@ -155,6 +184,7 @@ export function SwipeTabs({
             aria-hidden={active !== i}
             inert={active !== i ? true : undefined}
             className="relative h-full w-full shrink-0 snap-start snap-always overflow-y-auto overscroll-y-contain"
+            style={{ paddingTop: headerHeight, scrollPaddingTop: headerHeight }}
           >
             {page.content}
           </section>
