@@ -142,6 +142,20 @@
   }
 }
 
+/* Theme toggle: slower, eased cross-fade than the browser's default view transition */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
 /* Leaflet map theming */
 .leaflet-container {
   background: var(--card);
