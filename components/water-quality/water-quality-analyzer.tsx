@@ -434,7 +434,6 @@ export function WaterQualityAnalyzer() {
   // Stored as data, not text, so the list re-renders in the current language.
   const [issues, setIssues] = useState<DetectedIssue[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [activeTab, setActiveTab] = useState("physical")
   // Snapshot of the inputs at the moment of analysis, so editing a field doesn't re-run reuse advice.
   const [analyzedReadings, setAnalyzedReadings] = useState<AnalyzedReading[] | null>(null)
 
@@ -454,6 +453,8 @@ export function WaterQualityAnalyzer() {
     },
     []
   )
+
+  const countFilled = (params: typeof ALL_PARAMETERS) => params.filter((p) => values[p.id] !== "").length
 
   const handleValueChange = (id: string, value: string) => {
     setValues((prev) => ({ ...prev, [id]: value }))
@@ -611,43 +612,20 @@ export function WaterQualityAnalyzer() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-4">
-                <TabsTrigger value="physical" className="flex items-center gap-2">
-                  <Droplets className="w-4 h-4" />
-                  <span className="hidden sm:inline">{m.analyzer.physical}</span>
-                </TabsTrigger>
-                <TabsTrigger value="chemical" className="flex items-center gap-2">
-                  <Atom className="w-4 h-4" />
-                  <span className="hidden sm:inline">{m.analyzer.chemical}</span>
-                </TabsTrigger>
-                <TabsTrigger value="biological" className="flex items-center gap-2">
-                  <Bug className="w-4 h-4" />
-                  <span className="hidden sm:inline">{m.analyzer.biological}</span>
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="physical" className="mt-0">
-                <div className="max-h-[400px] overflow-y-auto pr-2">
-                  {renderParameterInputs(PHYSICAL_PARAMETERS)}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="chemical" className="mt-0">
-                <div className="max-h-[400px] overflow-y-auto pr-2">
-                  {renderParameterInputs(CHEMICAL_PARAMETERS)}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="biological" className="mt-0">
-                <div className="max-h-[400px] overflow-y-auto pr-2">
-                  {renderParameterInputs(BIOLOGICAL_PARAMETERS)}
-                </div>
-              </TabsContent>
-            </Tabs>
-  
-            <div className="flex gap-3 pt-4 border-t border-border">
+          <CardContent className="space-y-6">
+            {/* All three categories stacked, so the column fills alongside the results. */}
+            <ParameterSection icon={Droplets} title={m.analyzer.physical} filled={countFilled(PHYSICAL_PARAMETERS)} total={PHYSICAL_PARAMETERS.length}>
+              {renderParameterInputs(PHYSICAL_PARAMETERS)}
+            </ParameterSection>
+            <ParameterSection icon={Atom} title={m.analyzer.chemical} filled={countFilled(CHEMICAL_PARAMETERS)} total={CHEMICAL_PARAMETERS.length}>
+              {renderParameterInputs(CHEMICAL_PARAMETERS)}
+            </ParameterSection>
+            <ParameterSection icon={Bug} title={m.analyzer.biological} filled={countFilled(BIOLOGICAL_PARAMETERS)} total={BIOLOGICAL_PARAMETERS.length}>
+              {renderParameterInputs(BIOLOGICAL_PARAMETERS)}
+            </ParameterSection>
+
+            {/* Pinned to the bottom of the card while scrolling through the inputs. */}
+            <div className="sticky bottom-0 z-10 -mx-6 -mb-6 flex gap-3 rounded-b-xl border-t border-border bg-card/95 px-6 py-4 backdrop-blur-sm">
               <Button
                 onClick={analyzeWater}
                 disabled={!hasAnyValue || isAnalyzing}
@@ -732,5 +710,36 @@ export function WaterQualityAnalyzer() {
         <ReuseRecommendations readings={analyzedReadings} drinkingResult={result} />
       )}
     </div>
+  )
+}
+
+function ParameterSection({
+  icon: Icon,
+  title,
+  filled,
+  total,
+  children,
+}: {
+  icon: React.ElementType
+  title: string
+  filled: number
+  total: number
+  children: React.ReactNode
+}) {
+  return (
+    <section>
+      <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-border">
+        <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <span className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+            <Icon className="w-3.5 h-3.5 text-primary" />
+          </span>
+          {title}
+        </h4>
+        <span className="text-xs text-muted-foreground font-mono">
+          {filled}/{total}
+        </span>
+      </div>
+      {children}
+    </section>
   )
 }
