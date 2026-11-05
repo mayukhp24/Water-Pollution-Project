@@ -8,6 +8,8 @@ import { ParameterInput } from "./parameter-input"
 import { ResultDisplay } from "./result-display"
 import { StandardsTable } from "./standards-table"
 import { QualityDonutChart } from "./quality-donut-chart"
+import { ReuseRecommendations } from "./reuse-recommendations"
+import type { AnalyzedReading } from "@/lib/reuse/types"
 import { Beaker, RotateCcw, FlaskConical, Atom, Bug, Droplets } from "lucide-react"
 
 // Parameter Categories
@@ -397,6 +399,8 @@ export function WaterQualityAnalyzer() {
   const [issues, setIssues] = useState<string[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [activeTab, setActiveTab] = useState("physical")
+  // Snapshot of the inputs at the moment of analysis, so editing a field doesn't re-run reuse advice.
+  const [analyzedReadings, setAnalyzedReadings] = useState<AnalyzedReading[] | null>(null)
 
   const getParameterStatus = useCallback(
     (id: string, value: string): "safe" | "warning" | "danger" | "neutral" => {
@@ -424,6 +428,7 @@ export function WaterQualityAnalyzer() {
     setResult(null)
     setConfidence(0)
     setIssues([])
+    setAnalyzedReadings(null)
   }
 
   const chartData = useMemo(() => {
@@ -491,6 +496,17 @@ export function WaterQualityAnalyzer() {
     setResult(analysisResult)
     setConfidence(calculatedConfidence)
     setIssues(detectedIssues)
+    setAnalyzedReadings(
+      filledParams.map((param) => ({
+        id: param.id,
+        label: param.label,
+        value: parseFloat(values[param.id]),
+        unit: param.unit,
+        status: getParameterStatus(param.id, values[param.id]) as AnalyzedReading["status"],
+        safeMin: param.safeMin,
+        safeMax: param.safeMax,
+      })),
+    )
     setIsAnalyzing(false)
   }
 
@@ -534,117 +550,124 @@ export function WaterQualityAnalyzer() {
   )
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      {/* Input Form */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Beaker className="w-5 h-5 text-primary" />
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Input Form */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Beaker className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Water Parameters</CardTitle>
+                <CardDescription>
+                  Enter your water test measurements across categories
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-lg">Water Parameters</CardTitle>
-              <CardDescription>
-                Enter your water test measurements across categories
-              </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="physical" className="flex items-center gap-2">
+                  <Droplets className="w-4 h-4" />
+                  <span className="hidden sm:inline">Physical</span>
+                </TabsTrigger>
+                <TabsTrigger value="chemical" className="flex items-center gap-2">
+                  <Atom className="w-4 h-4" />
+                  <span className="hidden sm:inline">Chemical</span>
+                </TabsTrigger>
+                <TabsTrigger value="biological" className="flex items-center gap-2">
+                  <Bug className="w-4 h-4" />
+                  <span className="hidden sm:inline">Biological</span>
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="physical" className="mt-0">
+                <div className="max-h-[400px] overflow-y-auto pr-2">
+                  {renderParameterInputs(PHYSICAL_PARAMETERS)}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="chemical" className="mt-0">
+                <div className="max-h-[400px] overflow-y-auto pr-2">
+                  {renderParameterInputs(CHEMICAL_PARAMETERS)}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="biological" className="mt-0">
+                <div className="max-h-[400px] overflow-y-auto pr-2">
+                  {renderParameterInputs(BIOLOGICAL_PARAMETERS)}
+                </div>
+              </TabsContent>
+            </Tabs>
+  
+            <div className="flex gap-3 pt-4 border-t border-border">
+              <Button
+                onClick={analyzeWater}
+                disabled={!hasAnyValue || isAnalyzing}
+                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <FlaskConical className="w-4 h-4 mr-2 animate-pulse" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <FlaskConical className="w-4 h-4 mr-2" />
+                    Analyze Water Quality
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                disabled={!hasAnyValue && result === null}
+                className="border-border text-foreground hover:bg-secondary"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span className="sr-only">Reset</span>
+              </Button>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="physical" className="flex items-center gap-2">
-                <Droplets className="w-4 h-4" />
-                <span className="hidden sm:inline">Physical</span>
-              </TabsTrigger>
-              <TabsTrigger value="chemical" className="flex items-center gap-2">
-                <Atom className="w-4 h-4" />
-                <span className="hidden sm:inline">Chemical</span>
-              </TabsTrigger>
-              <TabsTrigger value="biological" className="flex items-center gap-2">
-                <Bug className="w-4 h-4" />
-                <span className="hidden sm:inline">Biological</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="physical" className="mt-0">
-              <div className="max-h-[400px] overflow-y-auto pr-2">
-                {renderParameterInputs(PHYSICAL_PARAMETERS)}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="chemical" className="mt-0">
-              <div className="max-h-[400px] overflow-y-auto pr-2">
-                {renderParameterInputs(CHEMICAL_PARAMETERS)}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="biological" className="mt-0">
-              <div className="max-h-[400px] overflow-y-auto pr-2">
-                {renderParameterInputs(BIOLOGICAL_PARAMETERS)}
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <div className="flex gap-3 pt-4 border-t border-border">
-            <Button
-              onClick={analyzeWater}
-              disabled={!hasAnyValue || isAnalyzing}
-              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {isAnalyzing ? (
-                <>
-                  <FlaskConical className="w-4 h-4 mr-2 animate-pulse" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <FlaskConical className="w-4 h-4 mr-2" />
-                  Analyze Water Quality
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleReset}
-              disabled={!hasAnyValue && result === null}
-              className="border-border text-foreground hover:bg-secondary"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className="sr-only">Reset</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Results Section */}
-      <div className="space-y-6">
-        {/* Donut Chart */}
-        <QualityDonutChart data={chartData} result={result} />
-
-        {/* Result Display */}
-        <ResultDisplay result={result} confidence={confidence} issues={issues} />
-
-        {/* Standards Table */}
-        {hasAnyValue && (
-          <Tabs defaultValue="physical" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="physical">Physical</TabsTrigger>
-              <TabsTrigger value="chemical">Chemical</TabsTrigger>
-              <TabsTrigger value="biological">Biological</TabsTrigger>
-            </TabsList>
-            <TabsContent value="physical">
-              <StandardsTable parameters={getTableParameters("physical")} />
-            </TabsContent>
-            <TabsContent value="chemical">
-              <StandardsTable parameters={getTableParameters("chemical")} />
-            </TabsContent>
-            <TabsContent value="biological">
-              <StandardsTable parameters={getTableParameters("biological")} />
-            </TabsContent>
-          </Tabs>
-        )}
+          </CardContent>
+        </Card>
+  
+        {/* Results Section */}
+        <div className="space-y-6">
+          {/* Donut Chart */}
+          <QualityDonutChart data={chartData} result={result} />
+  
+          {/* Result Display */}
+          <ResultDisplay result={result} confidence={confidence} issues={issues} />
+  
+          {/* Standards Table */}
+          {hasAnyValue && (
+            <Tabs defaultValue="physical" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="physical">Physical</TabsTrigger>
+                <TabsTrigger value="chemical">Chemical</TabsTrigger>
+                <TabsTrigger value="biological">Biological</TabsTrigger>
+              </TabsList>
+              <TabsContent value="physical">
+                <StandardsTable parameters={getTableParameters("physical")} />
+              </TabsContent>
+              <TabsContent value="chemical">
+                <StandardsTable parameters={getTableParameters("chemical")} />
+              </TabsContent>
+              <TabsContent value="biological">
+                <StandardsTable parameters={getTableParameters("biological")} />
+              </TabsContent>
+            </Tabs>
+          )}
+        </div>
       </div>
+
+      {/* Reuse Recommendations */}
+      {result && analyzedReadings && analyzedReadings.length > 0 && (
+        <ReuseRecommendations readings={analyzedReadings} drinkingResult={result} />
+      )}
     </div>
   )
 }
