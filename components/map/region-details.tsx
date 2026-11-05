@@ -5,6 +5,7 @@ import { MapPin, Users, Droplet, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getBin } from "@/lib/map/layers"
 import type { LayerDefinition, LayerId, Region } from "@/lib/map/types"
+import { CommunityReadings } from "./community-readings"
 import { formatPopulation, formatValue } from "./format"
 
 const KIND_LABEL: Record<Region["kind"], string> = {
@@ -103,6 +104,8 @@ export function RegionDetails({ region, layers, activeLayer, onLayerChange, onCl
       </dl>
 
       <p className="text-xs text-muted-foreground leading-relaxed rounded-md bg-secondary/40 p-3">{region.notes}</p>
+
+      <CommunityReadings regionId={region.id} regionName={region.name} />
     </div>
   )
 }

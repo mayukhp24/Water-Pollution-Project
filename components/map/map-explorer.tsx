@@ -363,7 +363,8 @@ export function MapExplorer() {
                     <MapIcon className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
                     <p className="text-sm text-foreground">No region selected</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Click a marker on the map or a row in Rankings to see its full profile.
+                      Click a marker on the map or a row in Rankings to see its full profile and add your own
+                      readings.
                     </p>
                   </div>
                 )}
